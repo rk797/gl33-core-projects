@@ -13,6 +13,12 @@
 #include "../AssetPath.h"
 
 
+enum class SceneType
+{
+	SIERPINSKY = 0,
+	ANTI_SNOWFLAKE = 1
+};
+
 struct Triangle
 {
 
@@ -34,4 +40,5 @@ struct FractalControl
 {
 	int  CurrentDepth = 5;
 	bool bNeedsUpdate = true;
+	SceneType CurrentScene = SceneType::ANTI_SNOWFLAKE;
 };

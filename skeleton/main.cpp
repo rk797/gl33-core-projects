@@ -13,6 +13,7 @@
 
 #include "usr/DEFS.h"
 #include "usr/Callbacks.h"
+#include <cmath>
 
 // EXAMPLE CALLBACKS
 //class MyCallbacks : public CallbackInterface {
@@ -49,6 +50,55 @@
 //	}
 //};
 // END EXAMPLES
+
+#define PI 3.14159265358979323846
+
+void RotateVector(glm::vec3& vec, float angleDegrees)
+{
+	float angRadians = angleDegrees * PI / 180.0;
+
+	float cosTheta = cos(angRadians);
+	float sinTheta = sin(angRadians);
+
+	float x = vec.x * cosTheta - vec.y * sinTheta;
+	float y = vec.x * sinTheta + vec.y * cosTheta;
+	vec.x = x;
+	vec.y = y;
+}
+void KockRecursion_AntiSnowflake(CPU_Geometry& _CPUGeom, glm::vec3 _Start, glm::vec3 _End, int _D)
+{
+	using namespace glm;
+
+	if (_D == 0)
+	{
+		_CPUGeom.verts.push_back(_Start);
+		_CPUGeom.cols.push_back(vec3(1, 1, 1));
+	}
+	else
+	{
+		
+		vec3 A = _Start;
+		vec3 B = _End;
+		// 1/3 of the way from the line going from points A -> B
+		vec3 m1 = vec3((2 * A.x + B.x) / 3, (2 * A.y + B.y) / 3, 0.0f);
+		// 2/3 of the way from the line going from points A -> B
+		vec3 m2 = vec3((A.x + 2 * B.x) / 3, (A.y + 2 * B.y) / 3, 0.0f);
+
+		vec3 v = m2 - m1;
+
+		RotateVector(v, 60.0f);
+
+		vec3 peak = v + m1;
+
+		int NextDepth = _D - 1;
+
+		KockRecursion_AntiSnowflake(_CPUGeom, A, m1, NextDepth);
+		KockRecursion_AntiSnowflake(_CPUGeom, m1, peak, NextDepth);
+		KockRecursion_AntiSnowflake(_CPUGeom, peak, m2, NextDepth);
+		KockRecursion_AntiSnowflake(_CPUGeom, m2, B, NextDepth);
+	}
+}
+
 
 
 void SierpinskiRecursion_SubTriangle(CPU_Geometry& _CPUGeom, Triangle _TRI, int _D)
@@ -125,42 +175,15 @@ int main() {
 		//https://www.khronos.org/opengl/wiki/Vertex_Specification_Best_Practices#Attribute_sizes
 
 
+		glm::vec3 v0(0.0f, 0.366f, 0.0f);   // Top
+		glm::vec3 v1(-0.5f, -0.5f, 0.0f);   // Left
+		glm::vec3 v2(0.5f, -0.5f, 0.0f);    // Right
 
-		Triangle mainTriangle
-		(
-			glm::vec3(0.f, 0.5f, 0.f),
-			glm::vec3(-0.5f, -0.5f, 0.f),
-			glm::vec3(0.5f, -0.5f, 0.f),
-			glm::vec3(0, 1, 0)
-		);
-
-		cpuGeom.verts.push_back(mainTriangle.v0);
-		cpuGeom.verts.push_back(mainTriangle.v1);
-		cpuGeom.verts.push_back(mainTriangle.v2);
-
-		cpuGeom.cols.push_back(mainTriangle.col);
-		cpuGeom.cols.push_back(mainTriangle.col);
-		cpuGeom.cols.push_back(mainTriangle.col);
-
-		SierpinskiRecursion_SubTriangle(cpuGeom, mainTriangle, fractalControl.CurrentDepth);
-
-		//// vertices
-		//cpuGeom.verts.push_back(glm::vec3(0.f, 0.5f, 0.f)); // Upper
-		//cpuGeom.verts.push_back(glm::vec3(-0.5f, -0.5f, 0.f)); // Lower Left
-		//cpuGeom.verts.push_back(glm::vec3(0.5f, -0.5f, 0.f)); // Lower Right
-
-		//// colours (these should be in linear space)
-		//cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f)); // Red
-		//cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f)); // Green
-		//cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f)); // Blue
-
-
-
-		gpuGeom.setVerts(cpuGeom.verts); // Upload vertex position geometry to VBO
-		gpuGeom.setCols(cpuGeom.cols); // Upload vertex colour attribute to VBO
+		Triangle mainTriangle(v0, v1, v2, glm::vec3(0, 1, 0));
 
 		// RENDER LOOP
-		while (!window.shouldClose()) {
+		while (!window.shouldClose()) 
+		{
 			glfwPollEvents(); // Propagate events to the callback class
 
 			if (fractalControl.bNeedsUpdate) 
@@ -169,7 +192,17 @@ int main() {
 				cpuGeom.verts.clear();
 				cpuGeom.cols.clear();
 
-				SierpinskiRecursion_SubTriangle(cpuGeom, mainTriangle, fractalControl.CurrentDepth);
+				if (fractalControl.CurrentScene == SceneType::SIERPINSKY)
+				{
+					SierpinskiRecursion_SubTriangle(cpuGeom, mainTriangle, fractalControl.CurrentDepth);
+				}
+				else if (fractalControl.CurrentScene == SceneType::ANTI_SNOWFLAKE)
+				{
+					// Generate all 3 sides for the closed loop
+					KockRecursion_AntiSnowflake(cpuGeom, v0, v1, fractalControl.CurrentDepth);
+					KockRecursion_AntiSnowflake(cpuGeom, v1, v2, fractalControl.CurrentDepth);
+					KockRecursion_AntiSnowflake(cpuGeom, v2, v0, fractalControl.CurrentDepth);
+				}
 
 				gpuGeom.setVerts(cpuGeom.verts);
 				gpuGeom.setCols(cpuGeom.cols);
@@ -184,7 +217,16 @@ int main() {
 			glEnable(GL_FRAMEBUFFER_SRGB); // Expect Colour to be encoded in sRGB standard (as opposed to RGB) 
 			// https://www.viewsonic.com/library/creative-work/srgb-vs-adobe-rgb-which-one-to-use/
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear render screen (all zero) and depth (all max depth)
-			glDrawArrays(GL_TRIANGLES, 0, (GLsizei)cpuGeom.verts.size()); // Render Triangle primatives, starting at index 0 (first) with a total of 3 elements (in this case 1 triangle)
+
+			if (fractalControl.CurrentScene == SceneType::SIERPINSKY)
+			{
+				glDrawArrays(GL_TRIANGLES, 0, (GLsizei)cpuGeom.verts.size()); // Render Triangle primatives, starting at index 0 (first) with a total of 3 elements (in this case 1 triangle)
+			}
+			else
+			{
+				glDrawArrays(GL_LINE_LOOP, 0, (GLsizei)cpuGeom.verts.size());
+			}
+			
 			glDisable(GL_FRAMEBUFFER_SRGB); // disable sRGB for things like imgui (if used)
 
 			window.swapBuffers(); //Swap the buffers while displaying the previous 
