@@ -16,7 +16,8 @@
 enum class SceneType
 {
 	SIERPINSKY = 0,
-	ANTI_SNOWFLAKE = 1
+	ANTI_SNOWFLAKE = 1,
+	TREE = 2
 };
 
 struct Triangle

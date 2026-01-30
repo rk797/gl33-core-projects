@@ -65,14 +65,14 @@ void RotateVector(glm::vec3& vec, float angleDegrees)
 	vec.x = x;
 	vec.y = y;
 }
-void KockRecursion_AntiSnowflake(CPU_Geometry& _CPUGeom, glm::vec3 _Start, glm::vec3 _End, int _D)
+void KockRecursion_AntiSnowflake(CPU_Geometry& _CPUGeom, glm::vec3 _Start, glm::vec3 _End, glm::vec3 _StartCol, glm::vec3 _EndCol, int _D)
 {
 	using namespace glm;
 
 	if (_D == 0)
 	{
 		_CPUGeom.verts.push_back(_Start);
-		_CPUGeom.cols.push_back(vec3(1, 1, 1));
+		_CPUGeom.cols.push_back(_StartCol);
 	}
 	else
 	{
@@ -84,19 +84,91 @@ void KockRecursion_AntiSnowflake(CPU_Geometry& _CPUGeom, glm::vec3 _Start, glm::
 		// 2/3 of the way from the line going from points A -> B
 		vec3 m2 = vec3((A.x + 2 * B.x) / 3, (A.y + 2 * B.y) / 3, 0.0f);
 
+		// interpolate colors at m1 and m2
+		vec3 colM1 = (_StartCol * 2.0f + _EndCol) / 3.0f;
+		vec3 colM2 = (_StartCol + _EndCol * 2.0f) / 3.0f;
+
 		vec3 v = m2 - m1;
 
 		RotateVector(v, 60.0f);
 
 		vec3 peak = v + m1;
+		vec3 colPeak = (colM1 + colM2) / 2.0f;
 
 		int NextDepth = _D - 1;
 
-		KockRecursion_AntiSnowflake(_CPUGeom, A, m1, NextDepth);
-		KockRecursion_AntiSnowflake(_CPUGeom, m1, peak, NextDepth);
-		KockRecursion_AntiSnowflake(_CPUGeom, peak, m2, NextDepth);
-		KockRecursion_AntiSnowflake(_CPUGeom, m2, B, NextDepth);
+		KockRecursion_AntiSnowflake(_CPUGeom, A, m1, _StartCol, colM1, NextDepth);
+		KockRecursion_AntiSnowflake(_CPUGeom, m1, peak, colM1, colPeak, NextDepth);
+		KockRecursion_AntiSnowflake(_CPUGeom, peak, m2, colPeak, colM2, NextDepth);
+		KockRecursion_AntiSnowflake(_CPUGeom, m2, B, colM2, _EndCol, NextDepth);
 	}
+}
+
+//void AddLine(glm::vec3 _Start, glm::vec3 _End)
+
+void TreeRecursion_Branch(CPU_Geometry& _CPUGeom, glm::vec3 _Start, glm::vec3 _End, int _D, bool bLastRotateDirection)
+{
+	// lambda function with capture by reference
+	auto AddLine = [&](glm::vec3 s, glm::vec3 e) -> void
+		{
+			_CPUGeom.verts.push_back(s);
+			_CPUGeom.verts.push_back(e);
+			if (_D < 6)
+			{
+				glm::vec3 LeafColor(0.0f, 1.0f, 0.0f);
+				_CPUGeom.cols.push_back(LeafColor);
+				_CPUGeom.cols.push_back(LeafColor);
+			}
+			else
+			{
+				glm::vec3 BranchColor(0.55f, 0.27f, 0.07f);
+				_CPUGeom.cols.push_back(BranchColor);
+				_CPUGeom.cols.push_back(BranchColor);
+			}
+		};
+
+
+	AddLine(_Start, _End);
+
+	// bLastRotateDirection
+	// 1 = right
+	// 0 = left
+	using namespace glm;
+	if (_D  == 0)
+	{
+		return;
+		
+	}
+	else
+	{
+		glm::vec3 v = _End - _Start;
+
+
+		// get the point at 0.65 of the way using linear parameterization
+		float alpha = 0.65f;
+		glm::vec3 p65 = (1.0f - alpha) * _Start + alpha * _End;
+		glm::vec3 v65 = p65 - _Start;
+		glm::vec3 q1 = _End + v65; // the point at 0.65 of the way extended beyond the end point
+		glm::vec3 q2 = q1 + v65; // the end of the main branch
+		glm::vec3 q1v = q1 - _End; // the vector for the rotated branch
+		RotateVector(q1v, bLastRotateDirection ? -27.5f : 27.5f);
+		glm::vec3 q3 = q1v + _End;
+
+		int NextDepth = _D - 1;
+		bLastRotateDirection = !bLastRotateDirection;
+
+		AddLine(_End, q1);
+		TreeRecursion_Branch(_CPUGeom, q1, q2, NextDepth, bLastRotateDirection);
+		TreeRecursion_Branch(_CPUGeom, _End, q3, NextDepth, !bLastRotateDirection);
+	}
+
+	
+
+
+	//float len = std::sqrt(std::pow(v.x, 2) + std::pow(v.y, 2));
+
+
+	// 
 }
 
 
@@ -104,6 +176,7 @@ void KockRecursion_AntiSnowflake(CPU_Geometry& _CPUGeom, glm::vec3 _Start, glm::
 void SierpinskiRecursion_SubTriangle(CPU_Geometry& _CPUGeom, Triangle _TRI, int _D)
 {
 	using namespace glm;
+
 
 	if (_D == 0)
 	{
@@ -179,6 +252,10 @@ int main() {
 		glm::vec3 v1(-0.5f, -0.5f, 0.0f);   // Left
 		glm::vec3 v2(0.5f, -0.5f, 0.0f);    // Right
 
+
+		glm::vec3 t1(0.0f, -0.6f, 0.0f);   // Bottom
+		glm::vec3 t2(0.0f, -0.3f, 0.0f);    // Top
+
 		Triangle mainTriangle(v0, v1, v2, glm::vec3(0, 1, 0));
 
 		// RENDER LOOP
@@ -198,10 +275,18 @@ int main() {
 				}
 				else if (fractalControl.CurrentScene == SceneType::ANTI_SNOWFLAKE)
 				{
-					// Generate all 3 sides for the closed loop
-					KockRecursion_AntiSnowflake(cpuGeom, v0, v1, fractalControl.CurrentDepth);
-					KockRecursion_AntiSnowflake(cpuGeom, v1, v2, fractalControl.CurrentDepth);
-					KockRecursion_AntiSnowflake(cpuGeom, v2, v0, fractalControl.CurrentDepth);
+					glm::vec3 blueCol(0.0f, 0.0f, 1.0f);
+					glm::vec3 redCol(1.0f, 0.0f, 0.0f);
+					glm::vec3 greenCol(0.0f, 1.0f, 0.0f);
+					
+					KockRecursion_AntiSnowflake(cpuGeom, v0, v1, blueCol, redCol, fractalControl.CurrentDepth);
+					KockRecursion_AntiSnowflake(cpuGeom, v1, v2, redCol, greenCol, fractalControl.CurrentDepth);
+					KockRecursion_AntiSnowflake(cpuGeom, v2, v0, greenCol, blueCol, fractalControl.CurrentDepth);
+				}
+
+				else if (fractalControl.CurrentScene == SceneType::TREE)
+				{
+					TreeRecursion_Branch(cpuGeom, t1, t2, fractalControl.CurrentDepth, 1);
 				}
 
 				gpuGeom.setVerts(cpuGeom.verts);
@@ -221,6 +306,12 @@ int main() {
 			if (fractalControl.CurrentScene == SceneType::SIERPINSKY)
 			{
 				glDrawArrays(GL_TRIANGLES, 0, (GLsizei)cpuGeom.verts.size()); // Render Triangle primatives, starting at index 0 (first) with a total of 3 elements (in this case 1 triangle)
+			}
+			else if (fractalControl.CurrentScene == SceneType::TREE)
+			{
+				// MUST use GL_LINES for the tree because it is a collection of segments
+				// that are not all continuously connected in a single loop.
+				glDrawArrays(GL_LINES, 0, (GLsizei)cpuGeom.verts.size());
 			}
 			else
 			{
