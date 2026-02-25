@@ -1,0 +1,68 @@
+#thirdparty
+CMakeUserPresets.json
+CMakeLists.txt.user
+
+# Visual Studio 2015/2017 cache/options directory
+.vs/
+# Uncomment if you have tasks that create the project's static files in wwwroot
+#wwwroot/
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# User-specific files (MonoDevelop/Xamarin Studio)
+*.userprefs
+
+# Selected C++ .gitignore contents from:
+# https://github.com/github/gitignore/blob/main/C%2B%2B.gitignore
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Linker files
+*.ilk
+
+# Fortran module files
+*.mod
+*.smod
+
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Build directories
+build/
+Build/
+build-*/
+[Oo]ut/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+install_manifest.txt 
+compile_commands.json
+
+# Temporary files
+*.tmp 
+*.log 
+*.bak 
+*.swp 
+
+# vcpkg
+vcpkg_installed/
+
+# debug information files
+*.dwo
+
+# test output & cache
+Testing/
+.cache/

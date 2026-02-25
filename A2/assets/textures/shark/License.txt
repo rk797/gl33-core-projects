@@ -1,0 +1,19 @@
+	
+
+	Simple shark texture by Christopher Mossman.
+	Based off of the photo "Galapagos Shark" by Toni Parras/NOAA, 2014.
+	This photo is also public domain (CC0) and was uploaded by the
+	Papahānaumokuākea Marine National Monument to Flickr:
+	https://www.flickr.com/photos/93641120@N05/16706415882
+
+			------------------------------
+
+	License (Creative Commons Zero, CC0)
+	http://creativecommons.org/publicdomain/zero/1.0/
+
+	You may use these assets in personal and commercial projects.
+	Credit to the original photo (i.e. Toni Parras and the
+	Papahānaumokuākea Marine National Monument) would be nice but
+	is not mandatory.
+
+			------------------------------
