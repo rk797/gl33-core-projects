@@ -1,4 +1,4 @@
-#include "DEFS.h"
+#include "Globals.h"
 // If you want to do a rotation around a certain point you will need to do 2 different transformations.
 // Rotate first and then translate
 // 

@@ -14,6 +14,7 @@ public:
 
 	void bind(); // Binds the GPU_Geometry.
 	void updateGeometry();
+	virtual void update(GLFWwindow* window, float deltaTime) {};
 	
 
 protected:	

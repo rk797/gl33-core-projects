@@ -5,7 +5,7 @@
 //
 
 #pragma once
-
+#include "GameObject.h"
 
 class Game {
 public:
@@ -17,6 +17,8 @@ public:
     Game& operator=(const Game&) = delete; // Copy assignment
     
     void RenderImGui();
+
+	std::vector<GameObject> enemies;
 
     // Unless explicitly stated in the doc, you may change these. You many (and encouraged!) to add more
 

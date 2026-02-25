@@ -13,7 +13,7 @@
 #include "game/GameObject.h"
 #include "time/FrameTime.h"
 #include "usr/LocalPlayer.h"
-
+#include "usr/Globals.h"
 
 // EXAMPLE CALLBACK
 class SampleCallbacksA2 : public CallbackInterface {
@@ -97,34 +97,12 @@ int main() {
 		window.setupImGui();		
 		window.setCallbacks(callback_ptr); // Can also update callbacks to new ones as needed (create more than one instance)
 
-		// This boilerplate's three texture parameters are the filepath, the
-		// interpolation mode, and whether the source file is sRGB encoded.
-		// Usually, one wants linear interpolation (GL_LINEAR) for the
-		// interpolation mode so that textures look less pixelated. However,
-		// because our game USES low-res pixel art, GL_NEAREST interpolation
-		// (i.e., no smoothing) looks better. Also, most textures where colour
-		// represents colour will be be made in sRGB mode by artists and so are
-		// sRGB encoded, so we pass in "true" here. Exceptions that you might
-		// see in a later assignment include ones where colour encodes a 3D
-		// vector in space, like a face normal; in this case, the texture is
-		// probably linear encoded and we'd pass in "false".
-		// ---
-		// Note: While it might be "best practice" in some ways to try and use
-		// a unique_ptr in Modern C++, you are free to make this a shared_ptr
-		// instead for convenience.		
-    	auto playerTexture = std::make_unique<Texture>(
-			assetPath->Get("textures/pirate_pack/sprites/ships/ship (6).png"),
-			GL_NEAREST, true
-		);
-		auto enemyTexture = std::make_unique<Texture>(
-			assetPath->Get("textures/pirate_pack/sprites/ships/ship (2).png"),
-			GL_NEAREST, true
-		);
+		
+		_Core.Init();
 
 
-
-		LocalPlayer localPlayer(playerTexture->getDimensions(), 0.2);
-		GameObject enemy1(enemyTexture->getDimensions(), 0.2, glm::vec3(0.5f, 0.5f, 0.0f));
+		LocalPlayer localPlayer(_Core.playerTexture->getDimensions(), 0.2);
+		GameObject enemy1(_Core.enemyTexture->getDimensions(), 0.2, glm::vec3(0.5f, 0.5f, 0.0f));
 
 
 		// If the time value between frames is too small, deltaTime might become
@@ -150,15 +128,14 @@ int main() {
 			shader.use(); // Use "this" shader to render
 			// This tells OpenGL that our fragment shader should sample pixels from
 			// this texture.
-			playerTexture->bind();
-			localPlayer.processInput(window.getGLFWwindow(), deltaTime);
+			localPlayer.update(window.getGLFWwindow(), deltaTime);
 			localPlayer.updateGeometry();
 			localPlayer.bind();
 
 			
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 
-			enemyTexture->bind();
+			_Core.enemyTexture->bind();
 			enemy1.bind();
 			glDrawArrays(GL_TRIANGLES, 0, 6); // Render Triangle primatives, starting at index 0 (first) with a total of 3 elements (in this case 1 triangle)
 			
