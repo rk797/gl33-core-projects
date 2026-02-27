@@ -9,12 +9,12 @@ void LocalPlayer::processInput(GLFWwindow* window, float deltaTime)
 	{
 		theta -= Game::ship_rotation_speed_rad_per_sec * deltaTime;
 	}
-
-	// since the player textures start facing to the right, we can use the unit circle for this
-	glm::vec3 forwardDir(cos(theta), -sin(theta), 0.0f); // unit vector (direction)
 	float radians = 90.f * (PI / 180.f);
 	glm::mat3 rotMat = Transformation::Rotate2D(radians);
-	glm::vec3 orthogDir = rotMat * forwardDir;
+
+	// since the player textures start facing to the right, we can use the unit circle for this
+	forwardDir = glm::vec3(cos(theta), -sin(theta), 0.0f); // unit vector (direction)
+	orthogDir = rotMat * forwardDir;
 
 	// Debug the vectors
 	/*
@@ -41,7 +41,7 @@ void LocalPlayer::processInput(GLFWwindow* window, float deltaTime)
 		{
 			std::cout << "CANNONBALL CREATED" << std::endl;	
 			last_cannonball_time = now;
-			cannonballs.emplace_back(orthogDir, position); // add a new cannonball in the orthoganal direction of the ship
+			cannonballs.emplace_back(); // add a new cannonball in the orthoganal direction of the ship
 		}
 	}
 }
@@ -53,6 +53,16 @@ void LocalPlayer::update(GLFWwindow* window, float deltaTime)
 	processInput(window, deltaTime);
 
 	_Core.cannonTexture->bind();
+	cannonballs.erase(
+		// moves all elements that do not match the condition to the front of the vector and returns a pointer to the end
+		// after that we can safely erase everything from the end of the remove_if to the end of the vector
+		std::remove_if(cannonballs.begin(), cannonballs.end(), [](auto& b)
+			{
+				return b.checkExpired();
+			}),
+		cannonballs.end()
+	);
+
 	for (auto& ball : cannonballs)
 	{
 		ball.update(window, deltaTime);

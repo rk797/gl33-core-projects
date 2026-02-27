@@ -12,8 +12,10 @@ private:
 	std::vector<Cannonball> cannonballs;
 
 public:
-	LocalPlayer(glm::ivec2 TextureDims, float TargetWidth)
-		: GameObject(TextureDims, TargetWidth)
+	glm::vec3 forwardDir;
+	glm::vec3 orthogDir;
+	LocalPlayer()
+		: GameObject(_Core.playerTexture->getDimensions(), 0.2)
 	{
 
 	}

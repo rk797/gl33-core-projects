@@ -16,9 +16,9 @@ public:
 	void updateGeometry();
 	virtual void update(GLFWwindow* window, float deltaTime) {};
 	
+	glm::vec3 position;
 
 protected:	
-	glm::vec3 position;
 	float theta; // Object's rotation
 	// Alternatively, you could represent rotation via a normalized heading vec:
 	// glm::vec3 heading;

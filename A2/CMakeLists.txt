@@ -103,7 +103,7 @@ set(APP_NAME "453-skeleton")
 
 add_compile_definitions("ASSET_DIR=${CMAKE_SOURCE_DIR}/assets")
 
-add_executable(${APP_NAME} ${SOURCES}  "453-skeleton/usr/Globals.h" "453-skeleton/usr/Transformation.h" "453-skeleton/usr/Transormation.cpp" "453-skeleton/usr/LocalPlayer.h" "453-skeleton/usr/Line.h" "453-skeleton/usr/Cannonball.h" "453-skeleton/usr/LocalPlayer.cpp")
+add_executable(${APP_NAME} ${SOURCES}  "453-skeleton/usr/Globals.h" "453-skeleton/usr/Transformation.h" "453-skeleton/usr/Transormation.cpp" "453-skeleton/usr/LocalPlayer.h" "453-skeleton/usr/Line.h" "453-skeleton/usr/Cannonball.h" "453-skeleton/usr/LocalPlayer.cpp" "453-skeleton/usr/Cannonball.cpp" "453-skeleton/usr/EnemyShip.h" "453-skeleton/usr/EnemyShip.cpp")
 target_include_directories(${APP_NAME} PRIVATE ${INCLUDES})
 target_link_libraries(${APP_NAME} ${LIBRARIES})
 target_compile_definitions(${APP_NAME} PRIVATE ${DEFINITIONS})

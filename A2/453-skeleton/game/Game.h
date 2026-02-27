@@ -6,6 +6,7 @@
 
 #pragma once
 #include "GameObject.h"
+#include "../usr/EnemyShip.h"
 
 class Game {
 public:
@@ -18,7 +19,11 @@ public:
     
     void RenderImGui();
 
-	std::vector<GameObject> enemies;
+	void update(float deltaTime);
+
+	std::vector<EnemyShip> enemies;
+	float spawnTimer = 0.f;
+	int enemiesSpawned = 0;
 
     // Unless explicitly stated in the doc, you may change these. You many (and encouraged!) to add more
 

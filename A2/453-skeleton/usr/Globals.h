@@ -1,4 +1,5 @@
 #pragma once
+#include "memory.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -9,10 +10,8 @@
 #include "../Shader.h"
 #include "../Window.h"
 #include "../AssetPath.h"
-#include "memory.h"
 #include "../Texture.h"
 #include "../AssetPath.h"
-
 
 #define PI 3.14159265358979323846
 

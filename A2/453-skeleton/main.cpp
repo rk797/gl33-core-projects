@@ -15,6 +15,8 @@
 #include "usr/LocalPlayer.h"
 #include "usr/Globals.h"
 
+
+LocalPlayer* pLocalPlayer;
 // EXAMPLE CALLBACK
 class SampleCallbacksA2 : public CallbackInterface {
 
@@ -99,10 +101,7 @@ int main() {
 
 		
 		_Core.Init();
-
-
-		LocalPlayer localPlayer(_Core.playerTexture->getDimensions(), 0.2);
-		GameObject enemy1(_Core.enemyTexture->getDimensions(), 0.2, glm::vec3(0.5f, 0.5f, 0.0f));
+		pLocalPlayer = new LocalPlayer();
 
 
 		// If the time value between frames is too small, deltaTime might become
@@ -128,17 +127,21 @@ int main() {
 			shader.use(); // Use "this" shader to render
 			// This tells OpenGL that our fragment shader should sample pixels from
 			// this texture.
-			localPlayer.update(window.getGLFWwindow(), deltaTime);
-			localPlayer.updateGeometry();
-			localPlayer.bind();
-
-			
+			gameManager.update(deltaTime);
+			pLocalPlayer->update(window.getGLFWwindow(), deltaTime);
+			pLocalPlayer->updateGeometry();
+			pLocalPlayer->bind();
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 
-			_Core.enemyTexture->bind();
-			enemy1.bind();
-			glDrawArrays(GL_TRIANGLES, 0, 6); // Render Triangle primatives, starting at index 0 (first) with a total of 3 elements (in this case 1 triangle)
-			
+			for (auto& enemy : gameManager.enemies)
+			{
+				enemy.update(window.getGLFWwindow(), deltaTime);
+				enemy.updateGeometry();
+				enemy.bind();
+				glDrawArrays(GL_TRIANGLES, 0, 6);
+			}
+
+
 			// https://www.viewsonic.com/library/creative-work/srgb-vs-adobe-rgb-which-one-to-use/
 			glDisable(GL_FRAMEBUFFER_SRGB); // disable sRGB for things like imgui (if used)
 

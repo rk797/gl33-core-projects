@@ -8,14 +8,45 @@
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
+#include "../usr/LocalPlayer.h"
+#include "../usr/EnemyShip.h"
 
+extern LocalPlayer* pLocalPlayer;
 //======================================================================================================================
 
 Game::Game() {}
 
 //======================================================================================================================
 
+void Game::update(float deltaTime)
+{
+	if (enemiesSpawned < number_of_pirateships)
+	{
+		spawnTimer += deltaTime;
 
+		if (spawnTimer >= 1.0f)
+		{
+			spawnTimer = 0.f;
+
+			float rnd = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+			float spawnX = (rnd > 0.5) ? 1.5f : -1.5f; // spawn either on the left or right side of the map
+			float spwanY = (rnd * 2.6f) - 1.5f;
+
+
+			glm::vec3 spawnPos(spawnX, spwanY, 0.0f);
+
+
+			float dy = pLocalPlayer->position.y - spawnPos.y;
+			float dx = pLocalPlayer->position.x - spawnPos.x;
+			float ang2player = atan2(dy, dx);
+
+
+			enemies.emplace_back(spawnPos, ang2player);
+			enemiesSpawned++;
+
+		}
+	}
+}
 
 void Game::RenderImGui() {
     {
