@@ -3,13 +3,13 @@
 
 
 GameObject::GameObject(glm::ivec2 textureDims, float targetWidth, glm::vec3 initPosition)
-	: position(0.0f, 0.0f, 0.0f)
+	: position(initPosition)
 	, theta(0)
 	, scale(1)
 	, transformationMatrix(1.0f) // This constructor sets it as the identity matrix
 {
 	glm::vec2 objectDims = (targetWidth / textureDims.x) * glm::vec2(textureDims);
-	cgeom = PrePartIVGeom::quadPrePartIV(objectDims.x, objectDims.y, initPosition);
+	cgeom = PrePartIVGeom::quadPrePartIV(objectDims.x, objectDims.y);
 	ggeom.setVerts(cgeom.verts);
 	ggeom.setUVs(cgeom.uvs);
 
@@ -23,17 +23,17 @@ void GameObject::bind() { ggeom.bind(); }
 // CPU_Geometry/GPU_Geometry pair you render is the one in SpriteQuad, NOT new
 // ones like what this creates! So you can choose to remove this namespace
 // and/or method at that time.
-CPU_Geometry PrePartIVGeom::quadPrePartIV(float width, float height, glm::vec3 offset) {
+CPU_Geometry PrePartIVGeom::quadPrePartIV(float width, float height) {
 	float halfWidth = width / 2.0f;
 	float halfHeight = height / 2.0f;
 	CPU_Geometry retGeom;
 	// vertices for the spaceship quad
-	retGeom.verts.push_back(glm::vec3(-halfWidth, halfHeight, 0.f) + offset);
-	retGeom.verts.push_back(glm::vec3(-halfWidth, -halfHeight, 0.f) + offset);
-	retGeom.verts.push_back(glm::vec3(halfWidth, -halfHeight, 0.f) + offset);
-	retGeom.verts.push_back(glm::vec3(-halfWidth, halfHeight, 0.f) + offset);
-	retGeom.verts.push_back(glm::vec3(halfWidth, -halfHeight, 0.f) + offset);
-	retGeom.verts.push_back(glm::vec3(halfWidth, halfHeight, 0.f) + offset);
+	retGeom.verts.push_back(glm::vec3(-halfWidth, halfHeight, 0.f));
+	retGeom.verts.push_back(glm::vec3(-halfWidth, -halfHeight, 0.f));
+	retGeom.verts.push_back(glm::vec3(halfWidth, -halfHeight, 0.f));
+	retGeom.verts.push_back(glm::vec3(-halfWidth, halfHeight, 0.f));
+	retGeom.verts.push_back(glm::vec3(halfWidth, -halfHeight, 0.f));
+	retGeom.verts.push_back(glm::vec3(halfWidth, halfHeight, 0.f));
 
 
 	// texture coordinates

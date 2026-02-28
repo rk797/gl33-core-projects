@@ -17,6 +17,7 @@
 
 
 LocalPlayer* pLocalPlayer;
+Game* pGameManager = new Game();
 // EXAMPLE CALLBACK
 class SampleCallbacksA2 : public CallbackInterface {
 
@@ -36,6 +37,9 @@ public:
 			// logic here.
 			if (key == GLFW_KEY_R && action == GLFW_PRESS) {
 				shader.recompile();
+			}
+			if (key == GLFW_KEY_X && action == GLFW_PRESS) {
+				pGameManager->reset();
 			}
 		}
 	}
@@ -110,7 +114,6 @@ int main() {
 		constexpr int maxFPS = 200;
 		FrameTime timeManager(maxFPS);
 		
-		Game gameManager;
 		// RENDER LOOP
 		while (!window.shouldClose()) {
 
@@ -127,13 +130,15 @@ int main() {
 			shader.use(); // Use "this" shader to render
 			// This tells OpenGL that our fragment shader should sample pixels from
 			// this texture.
-			gameManager.update(deltaTime);
+
+
+			pGameManager->update(window.getGLFWwindow(), deltaTime);
 			pLocalPlayer->update(window.getGLFWwindow(), deltaTime);
 			pLocalPlayer->updateGeometry();
 			pLocalPlayer->bind();
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 
-			for (auto& enemy : gameManager.enemies)
+			for (auto& enemy : pGameManager->enemies)
 			{
 				enemy.update(window.getGLFWwindow(), deltaTime);
 				enemy.updateGeometry();
@@ -141,12 +146,10 @@ int main() {
 				glDrawArrays(GL_TRIANGLES, 0, 6);
 			}
 
-
 			// https://www.viewsonic.com/library/creative-work/srgb-vs-adobe-rgb-which-one-to-use/
 			glDisable(GL_FRAMEBUFFER_SRGB); // disable sRGB for things like imgui (if used)
-
 			
-			gameManager.RenderImGui();
+			pGameManager->RenderImGui();
 
 			window.swapBuffers(); //Swap the buffers while displaying the previous
 		}

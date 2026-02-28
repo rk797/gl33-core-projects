@@ -38,5 +38,5 @@ protected:
 // ones like what this creates! So you can choose to remove this namespace
 // and/or method at that time.
 namespace PrePartIVGeom {
-	CPU_Geometry quadPrePartIV(float width, float height, glm::vec3 offset = {0.f, 0.f, 0.f});
+	CPU_Geometry quadPrePartIV(float width, float height);
 }

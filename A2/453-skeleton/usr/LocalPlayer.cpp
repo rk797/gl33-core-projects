@@ -1,6 +1,12 @@
 #include "LocalPlayer.h"
+#include "../game/Game.h"
+
+extern Game* pGameManager;
+
 void LocalPlayer::processInput(GLFWwindow* window, float deltaTime)
 {
+	if (pGameManager->gameOver) return;
+
 	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
 	{
 		theta += Game::ship_rotation_speed_rad_per_sec * deltaTime;
@@ -39,7 +45,6 @@ void LocalPlayer::processInput(GLFWwindow* window, float deltaTime)
 		float diff = std::chrono::duration<float>(now - last_cannonball_time).count();
 		if (diff >= Game::cannon_reload_time_sec)
 		{
-			std::cout << "CANNONBALL CREATED" << std::endl;	
 			last_cannonball_time = now;
 			cannonballs.emplace_back(); // add a new cannonball in the orthoganal direction of the ship
 		}
@@ -53,6 +58,19 @@ void LocalPlayer::update(GLFWwindow* window, float deltaTime)
 	processInput(window, deltaTime);
 
 	_Core.cannonTexture->bind();
+
+	for (auto& enemy : pGameManager->enemies)
+	{
+		for (auto& ball : cannonballs)
+		{
+			if (ball.checkIntersection(enemy.position))
+			{
+				pGameManager->score++;
+				enemy.isDead = true;
+			}
+		}
+	}
+
 	cannonballs.erase(
 		// moves all elements that do not match the condition to the front of the vector and returns a pointer to the end
 		// after that we can safely erase everything from the end of the remove_if to the end of the vector

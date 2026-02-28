@@ -18,9 +18,37 @@ Game::Game() {}
 
 //======================================================================================================================
 
-void Game::update(float deltaTime)
+void Game::reset()
 {
-	if (enemiesSpawned < number_of_pirateships)
+	health = player_start_health;
+	score = 0;
+	enemies.clear();
+	gameOver = false;
+}
+
+void Game::update(GLFWwindow* window, float deltaTime)
+{
+	for (auto& enemy : enemies)
+	{
+		if (enemy.checkIntersectionWithLocalPlayer())
+		{
+			enemy.isDead = true;
+			health--;
+		}
+	}
+
+	enemies.erase(
+		// moves all elements that do not match the condition to the front of the vector and returns a pointer to the end
+		// after that we can safely erase everything from the end of the remove_if to the end of the vector
+		std::remove_if(enemies.begin(), enemies.end(), [](auto& e)
+			{
+				return e.isDead;
+			}),
+		enemies.end()
+	);
+
+	// do not advance if game is already over
+	if (enemies.size() < number_of_pirateships)
 	{
 		spawnTimer += deltaTime;
 
@@ -42,7 +70,6 @@ void Game::update(float deltaTime)
 
 
 			enemies.emplace_back(spawnPos, ang2player);
-			enemiesSpawned++;
 
 		}
 	}
@@ -78,7 +105,15 @@ void Game::RenderImGui() {
     }
     //===========================================================================
     // TODO: Print correct information to screen --------------------------------
+	if (health <= 0)
+	{
+		if (!gameOver)
+		{
+			gameOver = true;
+		}
 
+		ImGui::Text("Game over! Press X to restart");
+	}
     ImGui::Text("Score: %d", score); // Second parameter (int) gets passed into "%d"
     ImGui::Text("Health: %d", health); // Second parameter (int) gets passed into "%d"
 

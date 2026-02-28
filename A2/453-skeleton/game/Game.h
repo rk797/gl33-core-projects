@@ -19,11 +19,12 @@ public:
     
     void RenderImGui();
 
-	void update(float deltaTime);
+	void update(GLFWwindow* window, float deltaTime);
+	void reset();
 
+	bool gameOver = false;
 	std::vector<EnemyShip> enemies;
 	float spawnTimer = 0.f;
-	int enemiesSpawned = 0;
 
     // Unless explicitly stated in the doc, you may change these. You many (and encouraged!) to add more
 
