@@ -9,15 +9,33 @@ GameObject::GameObject(glm::ivec2 textureDims, float targetWidth, glm::vec3 init
 	, transformationMatrix(1.0f) // This constructor sets it as the identity matrix
 {
 	glm::vec2 objectDims = (targetWidth / textureDims.x) * glm::vec2(textureDims);
-	cgeom = PrePartIVGeom::quadPrePartIV(objectDims.x, objectDims.y);
-	ggeom.setVerts(cgeom.verts);
-	ggeom.setUVs(cgeom.uvs);
+	//cgeom = PrePartIVGeom::quadPrePartIV(objectDims.x, objectDims.y);
+	//ggeom.setVerts(cgeom.verts);
+	//ggeom.setUVs(cgeom.uvs);
+	//origVerts = cgeom.verts;
 
-	origVerts = cgeom.verts;
+
+	baseScale = objectDims / 2.0f;
+
 
 }
 
-void GameObject::bind() { ggeom.bind(); }
+void GameObject::bind() 
+{ 
+	quad.bind();
+	//ggeom.bind(); 
+}
+
+glm::mat3 GameObject::getTransform()
+{
+	glm::mat3 scaleMat = Transformation::Scale2D(baseScale.x * scale, baseScale.y * scale);
+	glm::mat3 rotMat = Transformation::Rotate2D(theta);
+	glm::mat3 transMat = Transformation::Translate2D(position.x, position.y);
+
+	// scale -> rotate -> translate
+	transformationMatrix = transMat * rotMat * scaleMat;
+	return transformationMatrix;
+}
 
 // For full marks (Part IV), you'll need to make sure that the only
 // CPU_Geometry/GPU_Geometry pair you render is the one in SpriteQuad, NOT new

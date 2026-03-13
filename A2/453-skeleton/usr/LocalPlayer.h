@@ -19,6 +19,12 @@ public:
 
 	}
 
+	void reset()
+	{
+		position = glm::vec3(0.f, 0.f, 0.f);
+		theta = 0.f;
+	}
+
 	void update(GLFWwindow* window, float deltaTime) override;
 	void processInput(GLFWwindow* window, float deltaTime);
 };

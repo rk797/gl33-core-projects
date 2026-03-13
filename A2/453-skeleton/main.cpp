@@ -134,14 +134,28 @@ int main() {
 
 			pGameManager->update(window.getGLFWwindow(), deltaTime);
 			pLocalPlayer->update(window.getGLFWwindow(), deltaTime);
-			pLocalPlayer->updateGeometry();
+
+
+			glm::mat3 playerMat = pLocalPlayer->getTransform();
+			GLint currentProgram;
+			glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+			// get the memory location of uniform variable "transformMatrix" in the shader program
+			GLint loc = glGetUniformLocation(currentProgram, "transformMatrix");
+			glUniformMatrix3fv(loc, 1, GL_FALSE, &playerMat[0][0]);
+
+
+
+			//pLocalPlayer->updateGeometry();
 			pLocalPlayer->bind();
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 
 			for (auto& enemy : pGameManager->enemies)
 			{
 				enemy.update(window.getGLFWwindow(), deltaTime);
-				enemy.updateGeometry();
+				//enemy.updateGeometry();
+				glm::mat3 enemyMat = enemy.getTransform();
+				glUniformMatrix3fv(loc, 1, GL_FALSE, &enemyMat[0][0]); // upload matrix to vert shader
+
 				enemy.bind();
 				glDrawArrays(GL_TRIANGLES, 0, 6);
 			}

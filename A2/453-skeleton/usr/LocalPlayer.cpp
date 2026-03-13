@@ -84,7 +84,13 @@ void LocalPlayer::update(GLFWwindow* window, float deltaTime)
 	for (auto& ball : cannonballs)
 	{
 		ball.update(window, deltaTime);
-		ball.updateGeometry();
+		//ball.updateGeometry();
+		glm::mat3 ballMat = ball.getTransform();
+		GLint currentProgram;
+		glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+		GLint loc = glGetUniformLocation(currentProgram, "transformMatrix");
+		glUniformMatrix3fv(loc, 1, GL_FALSE, &ballMat[0][0]);
+
 		ball.bind();
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}

@@ -2,7 +2,7 @@
 
 #include "../Geometry.h"
 #include "../usr/Transformation.h"
-
+#include "../game/SpriteQuad.h"
 
 // An example class for Game Objects.
 // You are encouraged to customize or replace this as you see fit.
@@ -14,15 +14,18 @@ public:
 
 	void bind(); // Binds the GPU_Geometry.
 	void updateGeometry();
+	glm::mat3 getTransform();
 	virtual void update(GLFWwindow* window, float deltaTime) {};
 	
 	glm::vec3 position;
 
 protected:	
+	SpriteQuad quad;
 	float theta; // Object's rotation
 	// Alternatively, you could represent rotation via a normalized heading vec:
 	// glm::vec3 heading;
 	float scale; // Or, alternatively, a glm::vec2 scale;
+	glm::vec2 baseScale;
 	glm::mat4 transformationMatrix;
 
 	// For Part IV, you should not have the the following attributes, as you

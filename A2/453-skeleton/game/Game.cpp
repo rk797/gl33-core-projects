@@ -24,6 +24,8 @@ void Game::reset()
 	score = 0;
 	enemies.clear();
 	gameOver = false;
+	pLocalPlayer->reset();
+	enemiesSpawned = 0;
 }
 
 void Game::update(GLFWwindow* window, float deltaTime)
@@ -34,6 +36,7 @@ void Game::update(GLFWwindow* window, float deltaTime)
 		{
 			enemy.isDead = true;
 			health--;
+			score++;
 		}
 	}
 
@@ -48,7 +51,7 @@ void Game::update(GLFWwindow* window, float deltaTime)
 	);
 
 	// do not advance if game is already over
-	if (enemies.size() < number_of_pirateships)
+	if (enemiesSpawned < number_of_pirateships)
 	{
 		spawnTimer += deltaTime;
 
@@ -70,7 +73,7 @@ void Game::update(GLFWwindow* window, float deltaTime)
 
 
 			enemies.emplace_back(spawnPos, ang2player);
-
+			enemiesSpawned++;
 		}
 	}
 }
@@ -113,6 +116,15 @@ void Game::RenderImGui() {
 		}
 
 		ImGui::Text("Game over! Press X to restart");
+	}
+	if (score >= number_of_pirateships)
+	{
+		if (!gameOver)
+		{
+			gameOver = true;
+		}
+
+		ImGui::Text("Game over! YOU WIN! Press X to restart");
 	}
     ImGui::Text("Score: %d", score); // Second parameter (int) gets passed into "%d"
     ImGui::Text("Health: %d", health); // Second parameter (int) gets passed into "%d"
