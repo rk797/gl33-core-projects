@@ -35,6 +35,39 @@ public:
 		return current_points[0];
 	}
 
+	static std::vector<glm::vec3> GenerateBSplineSubdivision(const std::vector<glm::vec3>& control_points, int sub_lvl)
+	{
+		std::vector<glm::vec3> current_points = control_points;
+
+		for (int i = 0; i < sub_lvl; i++)
+		{
+			// atleast 3 points are required to calcualte cubic b-spline
+			if (current_points.size() < 3)
+			{
+				break;
+			}
+
+			std::vector<glm::vec3> new_points;
+			new_points.push_back(current_points[0]);
+			for (int j = 0; j < current_points.size() - 1; j++)
+			{
+				// calculate the midpoint between the two adjacent points
+				glm::vec3 pnt_edge = 0.5f * current_points[j] + 0.5f * current_points[j + 1];
+
+				if (j > 0)
+				{
+					// this calculation is for the vertex
+					glm::vec3 pnt_vertex = 0.125f * current_points[j - 1] + 0.75f * current_points[j] + 0.125f * current_points[j + 1];
+					new_points.push_back(pnt_vertex);
+				}
+
+				new_points.push_back(pnt_edge);
+			}
+			new_points.push_back(current_points[current_points.size() - 1]);
+			current_points = new_points;
+		}
+		return current_points;
+	}
 
 	static std::vector<glm::vec3> GenerateBezierCurve(const std::vector<glm::vec3> control_points, int segments)
 	{

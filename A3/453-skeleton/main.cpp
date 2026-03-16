@@ -14,7 +14,11 @@
 #include "Curves.h"
 #include <iostream>
 
-
+enum class CurveMode
+{
+	Bezier,
+	BSpline
+};
 
 class CurveEditorCallBack : public CallbackInterface {
 private:
@@ -24,9 +28,13 @@ private:
 	GPU_Geometry* CurveGpu;
 	int WindowWidth;
 	int WindowHeight;
-	glm::vec3 MousePosNdc;
-	int SelectedPointIndex;
-	bool IsDragging;
+	glm::vec3 MousePosNdc{};
+	int SelectedPointIndex = 0;
+	bool IsDragging = false;
+
+	CurveMode CurrentMode;
+	int SubdivisionLevel = 0;
+	int CurveVertexCount = 0;
 
 	void UpdateBuffers()
 	{
@@ -38,8 +46,18 @@ private:
 		std::vector<glm::vec3> line_colors(ControlPoints->size(), glm::vec3(0.0f, 1.0f, 0.0f));
 		LineGpu->setCols(line_colors);
 
-		std::vector<glm::vec3> bezier_vertices = CurveMath::GenerateBezierCurve(*ControlPoints, 100);
-		CurveGpu->setVerts(bezier_vertices);
+		std::vector<glm::vec3> generated_vertices;
+
+		if (CurrentMode == CurveMode::Bezier)
+		{
+			generated_vertices = CurveMath::GenerateBezierCurve(*ControlPoints, 100);
+		}
+		else
+		{
+			generated_vertices = CurveMath::GenerateBSplineSubdivision(*ControlPoints, SubdivisionLevel);
+		}
+		CurveVertexCount = generated_vertices.size();
+		CurveGpu->setVerts(generated_vertices);
 	}
 
 
@@ -47,16 +65,64 @@ public:
 	CurveEditorCallBack() {}
 
 	CurveEditorCallBack(std::vector<glm::vec3>* InControlPoints, GPU_Geometry* InPointGpu, GPU_Geometry* InLineGpu, GPU_Geometry* InCurveGpu)
-		: ControlPoints(InControlPoints), PointGpu(InPointGpu), LineGpu(InLineGpu), CurveGpu(InCurveGpu), WindowWidth(800), WindowHeight(800), SelectedPointIndex(-1), IsDragging(false)
+		: ControlPoints(InControlPoints), PointGpu(InPointGpu), LineGpu(InLineGpu), CurveGpu(InCurveGpu),
+		WindowWidth(800), WindowHeight(800), SelectedPointIndex(-1), IsDragging(false),
+		CurrentMode(CurveMode::Bezier), SubdivisionLevel(1), CurveVertexCount(0)
 	{
+		UpdateBuffers();
+	}
+	int GetCurveVertexCount() const
+	{
+		return CurveVertexCount;
 	}
 
 	virtual void keyCallback(int key, int scancode, int action, int mods) override {
-		Log::info("KeyCallback: key={}, action={}", key, action);
+		//Log::info("KeyCallback: key={}, action={}", key, action);
+		if (action == GLFW_PRESS)
+		{
+			// bezier (B)
+			if (key == GLFW_KEY_B)
+			{
+				CurrentMode = CurveMode::Bezier;
+				Log::info("CurveMode: Bezier");
+				UpdateBuffers();
+			}
+			// b-spline (S)
+			else if (key == GLFW_KEY_S)
+			{
+				CurrentMode = CurveMode::BSpline;
+				Log::info("Curve Mode: B-Spline (Level {})", SubdivisionLevel);
+				UpdateBuffers();
+			}
+			// up arrow, increases subdivision level for b-spline
+			else if (key == GLFW_KEY_UP)
+			{
+				SubdivisionLevel++;
+				if (SubdivisionLevel > 5) SubdivisionLevel = 5; // Cap at 5 as per assignment requirements
+				Log::info("Subdivision Level Increased to: {}", SubdivisionLevel);
+
+				if (CurrentMode == CurveMode::BSpline)
+				{
+					UpdateBuffers();
+				}
+			}
+			// down arrow, decreases subdivision level
+			else if (key == GLFW_KEY_DOWN)
+			{
+				SubdivisionLevel--;
+				if (SubdivisionLevel < 0) SubdivisionLevel = 0;
+				Log::info("Subdivision Level Decreased to: {}", SubdivisionLevel);
+
+				if (CurrentMode == CurveMode::BSpline)
+				{
+					UpdateBuffers();
+				}
+			}
+		}
 	}
 
 	virtual void mouseButtonCallback(int button, int action, int mods) override {
-		Log::info("MouseButtonCallback: button={}, action={}", button, action);
+		//Log::info("MouseButtonCallback: button={}, action={}", button, action);
 
 		if (button == GLFW_MOUSE_BUTTON_LEFT)
 		{
@@ -98,6 +164,37 @@ public:
 			}
 		}
 
+		if (button == GLFW_MOUSE_BUTTON_RIGHT)
+		{
+			if (action == GLFW_PRESS)
+			{
+
+				float MinDist = 0.1f; // find the closest point
+				int ClosestIndex = -1;
+
+				for (size_t i = 0; i < ControlPoints->size(); i++) // iterate through all cntrl points
+				{
+					// get the distance from our cursor to the control point
+					float Dist = glm::length((*ControlPoints)[i] - MousePosNdc);
+					if (Dist < MinDist)
+					{
+						MinDist = Dist;
+						ClosestIndex = static_cast<int>(i);
+					}
+				}
+
+				if (ClosestIndex != -1)
+				{
+					// erase the point from the control points vector
+					// takes in a ptr
+					// ptr + idx*(elem size)
+					Log::info("Removing control point at position: ({}, {})", (*ControlPoints)[ClosestIndex].x, (*ControlPoints)[ClosestIndex].y);
+					ControlPoints->erase(ControlPoints->begin() + ClosestIndex);
+					UpdateBuffers();
+				}
+			}
+		}
+
 
 	}
 
@@ -105,7 +202,7 @@ public:
 		
 		// we have to use * 2.0f - 1.0f because open GL uses NDC coordinates meaning the very left is -1.f and the very right is 1.f
 		float X_Ndc = static_cast<float>(xpos) / WindowWidth * 2.0f - 1.0f;
-		float Y_Ndc = -(static_cast<float>(ypos) / WindowWidth * 2.0f - 1.0f);
+		float Y_Ndc = -(static_cast<float>(ypos) / WindowHeight * 2.0f - 1.0f);
 
 		//Log::info("CursorPosCallback: xpos={}, ypos={}", X_Ndc, Y_Ndc);
 
@@ -355,7 +452,7 @@ int main() {
 
 			//Render the curve
 			curve_gpu.bind();
-			glDrawArrays(GL_LINE_STRIP, 0, curve_cpu.verts.size());
+			glDrawArrays(GL_LINE_STRIP, 0, curve_editor_callback->GetCurveVertexCount());
 
 			//------------------------------------------
 			glDisable(GL_FRAMEBUFFER_SRGB); // disable sRGB for things like imgui
