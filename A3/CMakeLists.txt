@@ -103,7 +103,7 @@ set(INCLUDES ${INCLUDES})
 set(APP_NAME "453-skeleton")
 
 add_compile_definitions("ASSET_DIR=${CMAKE_SOURCE_DIR}/assets")
-add_executable(${APP_NAME} ${SOURCES} "453-skeleton/Curves.h")
+add_executable(${APP_NAME} ${SOURCES} "453-skeleton/Curves.h" "453-skeleton/OrbitCamera.h")
 target_include_directories(${APP_NAME} PRIVATE ${INCLUDES})
 target_link_libraries(${APP_NAME} ${LIBRARIES})
 target_compile_definitions(${APP_NAME} PRIVATE ${DEFINITIONS})

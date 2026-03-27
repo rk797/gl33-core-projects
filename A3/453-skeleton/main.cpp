@@ -13,6 +13,13 @@
 #include "AssetPath.h"
 #include "Curves.h"
 #include <iostream>
+#include "OrbitCamera.h"
+
+enum class EditorMode
+{
+	Editor2D,
+	Viewer3D
+};
 
 enum class CurveMode
 {
@@ -26,21 +33,46 @@ private:
 	GPU_Geometry* PointGpu;
 	GPU_Geometry* LineGpu;
 	GPU_Geometry* CurveGpu;
+	GPU_Geometry* SurfaceGpu;
+	GPU_Geometry* TensorGpu;
+
 	int WindowWidth;
 	int WindowHeight;
 	glm::vec3 MousePosNdc{};
+	double LastMouseX = 0.0;
+	double LastMouseY = 0.0;
 	int SelectedPointIndex = 0;
 	bool IsDragging = false;
 
-	CurveMode CurrentMode;
+	std::vector<std::vector<glm::vec3>> TensorControlGrid;
+public:
+	CurveMode CurrentCurveMode;
 	int SubdivisionLevel = 0;
 	int CurveVertexCount = 0;
+	int SurfaceVertexCount = 0;
+	bool ShowSurfaceColors = true;
+
+	int TensorVertexCount = 0;
+
+
+
+	EditorMode CurrentAppMode;
+	OrbitCamera Camera;
+	bool ShowSurface = false;
+	bool ShowTensor = false;
 
 	void UpdateBuffers()
 	{
 		PointGpu->setVerts(*ControlPoints);
 		std::vector<glm::vec3> point_colors(ControlPoints->size(), glm::vec3(1.0f, 0.0f, 0.0f));
+
+		if (SelectedPointIndex != -1 && SelectedPointIndex < point_colors.size())
+		{
+			point_colors[SelectedPointIndex] = glm::vec3(1.0f, 1.0f, 0.0f); // yellow for selected points
+		}
+
 		PointGpu->setCols(point_colors);
+
 
 		LineGpu->setVerts(*ControlPoints);
 		std::vector<glm::vec3> line_colors(ControlPoints->size(), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -48,7 +80,7 @@ private:
 
 		std::vector<glm::vec3> generated_vertices;
 
-		if (CurrentMode == CurveMode::Bezier)
+		if (CurrentCurveMode == CurveMode::Bezier)
 		{
 			generated_vertices = CurveMath::GenerateBezierCurve(*ControlPoints, 100);
 		}
@@ -58,39 +90,96 @@ private:
 		}
 		CurveVertexCount = generated_vertices.size();
 		CurveGpu->setVerts(generated_vertices);
+
+		SurfaceGeometry surface_geom = CurveMath::GenerateSurfaceOfRevolution(generated_vertices, 40, ShowSurfaceColors);
+		SurfaceVertexCount = surface_geom.vertices.size();
+		if (SurfaceVertexCount > 0)
+		{
+			SurfaceGpu->setVerts(surface_geom.vertices);
+			SurfaceGpu->setCols(surface_geom.colors);
+		}
+
+		SurfaceGeometry tensor_geom = CurveMath::GenerateTensorProductSurface(TensorControlGrid, SubdivisionLevel);
+		TensorVertexCount = tensor_geom.vertices.size();
+		if (TensorVertexCount > 0)
+		{
+			TensorGpu->setVerts(tensor_geom.vertices);
+			TensorGpu->setCols(tensor_geom.colors);
+		}
+
+		// camera must always be focused on the centroid of the control points or origin
+		if (CurrentAppMode == EditorMode::Editor2D || (!ShowSurface && !ShowTensor))
+		{
+			Camera.target_centroid = CurveMath::CalculateCentroid(*ControlPoints);
+		}
+		else
+		{
+			Camera.target_centroid = glm::vec3(0.0f, 0.0f, 0.0f);
+		}
 	}
 
-
-public:
 	CurveEditorCallBack() {}
 
-	CurveEditorCallBack(std::vector<glm::vec3>* InControlPoints, GPU_Geometry* InPointGpu, GPU_Geometry* InLineGpu, GPU_Geometry* InCurveGpu)
-		: ControlPoints(InControlPoints), PointGpu(InPointGpu), LineGpu(InLineGpu), CurveGpu(InCurveGpu),
+	CurveEditorCallBack(std::vector<glm::vec3>* InControlPoints, GPU_Geometry* InPointGpu, GPU_Geometry* InLineGpu, GPU_Geometry* InCurveGpu, GPU_Geometry* InSurfaceGpu, GPU_Geometry* InTensorGpu)
+		: ControlPoints(InControlPoints), PointGpu(InPointGpu), LineGpu(InLineGpu), CurveGpu(InCurveGpu), SurfaceGpu(InSurfaceGpu), TensorGpu(InTensorGpu),
 		WindowWidth(800), WindowHeight(800), SelectedPointIndex(-1), IsDragging(false),
-		CurrentMode(CurveMode::Bezier), SubdivisionLevel(1), CurveVertexCount(0)
+		CurrentCurveMode(CurveMode::Bezier), SubdivisionLevel(1), CurveVertexCount(0), SurfaceVertexCount(0), ShowSurfaceColors(true), CurrentAppMode(EditorMode::Editor2D)
 	{
+		TensorControlGrid = CurveMath::GenerateSampleGrid();
 		UpdateBuffers();
 	}
 	int GetCurveVertexCount() const
 	{
 		return CurveVertexCount;
 	}
+	int GetSurfaceVertexCount() const 
+	{ 
+		return SurfaceVertexCount; 
+	}
+	int GetTensorVertexCount() const 
+	{ 
+		return TensorVertexCount; 
+	}
 
 	virtual void keyCallback(int key, int scancode, int action, int mods) override {
 		//Log::info("KeyCallback: key={}, action={}", key, action);
 		if (action == GLFW_PRESS)
 		{
-			// bezier (B)
-			if (key == GLFW_KEY_B)
+			if (key == GLFW_KEY_TAB)
 			{
-				CurrentMode = CurveMode::Bezier;
+				if (CurrentAppMode == EditorMode::Editor2D)
+				{
+					CurrentAppMode = EditorMode::Viewer3D;
+					Log::info("Mode: 3D Viewer");
+				}
+				else
+				{
+					CurrentAppMode = EditorMode::Editor2D;
+					Log::info("Mode: 2D Editor");
+				}
+				UpdateBuffers();
+			}
+			if (key == GLFW_KEY_1)
+			{
+				ShowSurface = !ShowSurface;
+				UpdateBuffers(); 
+			}
+			else if (key == GLFW_KEY_2)
+			{
+				ShowSurfaceColors = !ShowSurfaceColors;
+				UpdateBuffers();
+			}
+			// bezier (B)
+			else if (key == GLFW_KEY_3)
+			{
+				CurrentCurveMode = CurveMode::Bezier;
 				Log::info("CurveMode: Bezier");
 				UpdateBuffers();
 			}
 			// b-spline (S)
-			else if (key == GLFW_KEY_S)
+			else if (key == GLFW_KEY_4)
 			{
-				CurrentMode = CurveMode::BSpline;
+				CurrentCurveMode = CurveMode::BSpline;
 				Log::info("Curve Mode: B-Spline (Level {})", SubdivisionLevel);
 				UpdateBuffers();
 			}
@@ -101,7 +190,7 @@ public:
 				if (SubdivisionLevel > 5) SubdivisionLevel = 5; // Cap at 5 as per assignment requirements
 				Log::info("Subdivision Level Increased to: {}", SubdivisionLevel);
 
-				if (CurrentMode == CurveMode::BSpline)
+				if (CurrentCurveMode == CurveMode::BSpline)
 				{
 					UpdateBuffers();
 				}
@@ -113,7 +202,7 @@ public:
 				if (SubdivisionLevel < 0) SubdivisionLevel = 0;
 				Log::info("Subdivision Level Decreased to: {}", SubdivisionLevel);
 
-				if (CurrentMode == CurveMode::BSpline)
+				if (CurrentCurveMode == CurveMode::BSpline)
 				{
 					UpdateBuffers();
 				}
@@ -128,34 +217,42 @@ public:
 		{
 			if (action == GLFW_PRESS)
 			{
-				
-				float MinDist = 0.1f; // find the closest point
-				int ClosestIndex = -1;
-
-				for (size_t i = 0; i < ControlPoints->size(); ++i) // iterate through all cntrl points
+				if (CurrentAppMode == EditorMode::Editor2D)
 				{
-					// get the distance from our cursor to the control point
-					float Dist = glm::length((*ControlPoints)[i] - MousePosNdc);
-					if (Dist < MinDist)
+					float MinDist = 0.1f; // find the closest point
+					int ClosestIndex = -1;
+
+					for (size_t i = 0; i < ControlPoints->size(); ++i) // iterate through all cntrl points
 					{
-						MinDist = Dist;
-						ClosestIndex = static_cast<int>(i);
+						// get the distance from our cursor to the control point
+						float Dist = glm::length((*ControlPoints)[i] - MousePosNdc);
+						if (Dist < MinDist)
+						{
+							MinDist = Dist;
+							ClosestIndex = static_cast<int>(i);
+						}
+					}
+
+					if (ClosestIndex != -1)
+					{
+						SelectedPointIndex = ClosestIndex;
+						IsDragging = true;
+					}
+					else
+					{
+						SelectedPointIndex = ControlPoints->size();
+						Log::info("Adding new control point at position: ({}, {})", MousePosNdc.x, MousePosNdc.y);
+						ControlPoints->push_back(MousePosNdc);
+						UpdateBuffers();
+						Log::info("Control Points Size: {}", ControlPoints->size());
+
 					}
 				}
-
-				if (ClosestIndex != -1)
+				else if (CurrentAppMode == EditorMode::Viewer3D)
 				{
-					SelectedPointIndex = ClosestIndex;
 					IsDragging = true;
 				}
-				else
-				{
-					Log::info("Adding new control point at position: ({}, {})", MousePosNdc.x, MousePosNdc.y);
-					ControlPoints->push_back(MousePosNdc);
-					UpdateBuffers();
-					Log::info("Control Points Size: {}", ControlPoints->size());
-
-				}
+				
 			}
 			else if (action == GLFW_RELEASE)
 			{
@@ -198,26 +295,46 @@ public:
 
 	}
 
-	virtual void cursorPosCallback(double xpos, double ypos) override {
-		
+	virtual void cursorPosCallback(double xpos, double ypos) override
+	{
 		// we have to use * 2.0f - 1.0f because open GL uses NDC coordinates meaning the very left is -1.f and the very right is 1.f
-		float X_Ndc = static_cast<float>(xpos) / WindowWidth * 2.0f - 1.0f;
-		float Y_Ndc = -(static_cast<float>(ypos) / WindowHeight * 2.0f - 1.0f);
-
+		float x_ndc = static_cast<float>(xpos) / WindowWidth * 2.0f - 1.0f;
+		float y_ndc = -(static_cast<float>(ypos) / WindowHeight * 2.0f - 1.0f);
+		MousePosNdc = glm::vec3(x_ndc, y_ndc, 0.0f);
 		//Log::info("CursorPosCallback: xpos={}, ypos={}", X_Ndc, Y_Ndc);
 
-		MousePosNdc = glm::vec3(X_Ndc, Y_Ndc, 0.f);
-
-		// if we are dragging a point, update that points position
-		if (IsDragging && SelectedPointIndex != -1)
+		if (CurrentAppMode == EditorMode::Editor2D && IsDragging && SelectedPointIndex != -1)
 		{
 			(*ControlPoints)[SelectedPointIndex] = MousePosNdc;
 			UpdateBuffers();
 		}
+		else if (CurrentAppMode == EditorMode::Viewer3D && IsDragging)
+		{
+			// the direction of rotation should be the opposite of the drag direction.
+			float delta_x = static_cast<float>(xpos - LastMouseX);
+			float delta_y = static_cast<float>(ypos - LastMouseY);
+
+			Camera.phi -= delta_x * 0.01f;
+			Camera.theta -= delta_y * 0.01f;
+
+			// clamp theta between +90 and -90 degrees
+			float max_theta = (glm::pi<float>() / 2.0f) - 0.01f;
+			if (Camera.theta > max_theta) Camera.theta = max_theta;
+			if (Camera.theta < -max_theta) Camera.theta = -max_theta;
+		}
+
+		LastMouseX = xpos;
+		LastMouseY = ypos;
 	}
 
-	virtual void scrollCallback(double xoffset, double yoffset) override {
-		Log::info("ScrollCallback: xoffset={}, yoffset={}", xoffset, yoffset);
+
+	virtual void scrollCallback(double xoffset, double yoffset) override
+	{
+		if (CurrentAppMode == EditorMode::Viewer3D)
+		{
+			Camera.distance -= static_cast<float>(yoffset) * 0.5f;
+			if (Camera.distance < 0.1f) Camera.distance = 0.1f; // Prevent zooming through the target
+		}
 	}
 
 	virtual void windowSizeCallback(int width, int height) override {
@@ -249,69 +366,49 @@ private:
 
 class CurveEditorPanelRenderer : public PanelRendererInterface {
 public:
-	CurveEditorPanelRenderer()
-		: inputText(""), buttonClickCount(0), sliderValue(0.0f),
-		dragValue(0.0f), inputValue(0.0f), checkboxValue(false),
-		comboSelection(0)
-	{
-		// Initialize options for the combo box
-		options[0] = "Option 1";
-		options[1] = "Option 2";
-		options[2] = "Option 3";
 
-		// Initialize color (white by default)
-		colorValue[0] = 1.0f; // R
-		colorValue[1] = 1.0f; // G
-		colorValue[2] = 1.0f; // B
+	std::shared_ptr<CurveEditorCallBack> EditorCallback;
+
+	CurveEditorPanelRenderer(std::shared_ptr<CurveEditorCallBack> callback)
+		: EditorCallback(callback)
+	{
+		// default col
+		colorValue[0] = 0.15f;
+		colorValue[1] = 0.15f;
+		colorValue[2] = 0.15f;
 	}
 
 	virtual void render() override {
-		ImGui::Begin("Window name:");
-		// Color selector
-		ImGui::ColorEdit3("Select Background Color", colorValue); // RGB color selector
-		ImGui::Text("Selected Color: R: %.3f, G: %.3f, B: %.3f", colorValue[0], colorValue[1], colorValue[2]);
+		ImGui::Begin("Curve Editor Settings");
 
-		// Text input
-		ImGui::InputText("Input Text", inputText, IM_ARRAYSIZE(inputText));
+		ImGui::Text("Global Settings");
+		ImGui::ColorEdit3("Background Color", colorValue);
 
-		// Display the input text
-		ImGui::Text("You entered: %s", inputText);
+		ImGui::Separator();
 
-		// Button
-		if (ImGui::Button("Click Me")) {
-			buttonClickCount++;
+		ImGui::Text("Geometry Controls");
+		// If the slider is moved, update the variable AND trigger UpdateBuffers
+		if (ImGui::SliderInt("Subdivision Level", &EditorCallback->SubdivisionLevel, 0, 5))
+		{
+			EditorCallback->UpdateBuffers();
 		}
-		ImGui::Text("Button clicked %d times", buttonClickCount);
 
-		// Scrollable block
-		ImGui::TextWrapped("Scrollable Block:");
-		ImGui::BeginChild("ScrollableChild", ImVec2(0, 100), true); // Create a scrollable child
-		for (int i = 0; i < 20; i++) {
-			ImGui::Text("Item %d", i);
+		ImGui::Separator();
+
+		ImGui::Text("3D Viewer Toggles");
+		if (ImGui::Checkbox("Show Surface of Revolution", &EditorCallback->ShowSurface))
+		{
+			// Prevent showing both shapes at the exact same time
+			if (EditorCallback->ShowSurface) EditorCallback->ShowTensor = false;
+			EditorCallback->UpdateBuffers();
 		}
-		ImGui::EndChild();
 
-		// Float slider
-		ImGui::SliderFloat("Float Slider", &sliderValue, 0.0f, 100.0f, "Slider Value: %.3f");
+		if (ImGui::Checkbox("Show Tensor Surface", &EditorCallback->ShowTensor))
+		{
+			if (EditorCallback->ShowTensor) EditorCallback->ShowSurface = false;
+			EditorCallback->UpdateBuffers();
+		}
 
-		// Float drag
-		ImGui::DragFloat("Float Drag", &dragValue, 0.1f, 0.0f, 100.0f, "Drag Value: %.3f");
-
-		// Float input
-		ImGui::InputFloat("Float Input", &inputValue, 0.1f, 1.0f, "Input Value: %.3f");
-
-		// Checkbox
-		ImGui::Checkbox("Enable Feature", &checkboxValue);
-		ImGui::Text("Feature Enabled: %s", checkboxValue ? "Yes" : "No");
-
-		// Combo box
-		ImGui::Combo("Select an Option", &comboSelection, options, IM_ARRAYSIZE(options));
-		ImGui::Text("Selected: %s", options[comboSelection]);
-
-		// Displaying current values
-		ImGui::Text("Slider Value: %.3f", sliderValue);
-		ImGui::Text("Drag Value: %.3f", dragValue);
-		ImGui::Text("Input Value: %.3f", inputValue);
 		ImGui::End();
 	}
 
@@ -320,15 +417,7 @@ public:
 	}
 
 private:
-	float colorValue[3];  // Array for RGB color values
-	char inputText[256];  // Buffer for input text
-	int buttonClickCount; // Count button clicks
-	float sliderValue;    // Value for float slider
-	float dragValue;      // Value for drag input
-	float inputValue;     // Value for float input
-	bool checkboxValue;   // Value for checkbox
-	int comboSelection;   // Index of selected option in combo box
-	const char* options[3]; // Options for the combo box
+	float colorValue[3];
 };
 
 
@@ -402,12 +491,15 @@ int main() {
 		curve_gpu.setVerts(curve_cpu.verts);
 		curve_gpu.setCols(curve_cpu.cols);
 
+		GPU_Geometry surface_gpu;
+		GPU_Geometry tensor_gpu;
+
 
 		// CALLBACKS
-		auto curve_editor_callback = std::make_shared<CurveEditorCallBack>(&cp_positions_vector, &cp_point_gpu, &cp_line_gpu, &curve_gpu);
+		auto curve_editor_callback = std::make_shared<CurveEditorCallBack>(&cp_positions_vector, &cp_point_gpu, &cp_line_gpu, &curve_gpu, &surface_gpu, &tensor_gpu);
 		//auto turn_table_3D_viewer_callback = std::make_shared<TurnTable3DViewerCallBack>();
 
-		auto curve_editor_panel_renderer = std::make_shared<CurveEditorPanelRenderer>();
+		auto curve_editor_panel_renderer = std::make_shared<CurveEditorPanelRenderer>(curve_editor_callback);
 
 		// You can change which PanelRendererInterface is assigned to this
 		// "curr_panel" pointer as one possible way of switching between ImGui
@@ -439,20 +531,75 @@ int main() {
 			// Use the default shader (can use different ones for different objects)
 			shader_program_default.use();
 
-			//Render control points
-			cp_point_gpu.bind();
-			glPointSize(15.f);
-			glDrawArrays(GL_POINTS, 0, cp_positions_vector.size());
+			GLint view_loc = glGetUniformLocation((GLuint)shader_program_default, "view");
+			GLint proj_loc = glGetUniformLocation((GLuint)shader_program_default, "projection");
 
-			//Render curve connecting control points
-			cp_line_gpu.bind();
-			//glLineWidth(10.f); //May do nothing (like it does on my computer): https://community.khronos.org/t/3-0-wide-lines-deprecated/55426
-			glDrawArrays(GL_LINE_STRIP, 0, cp_positions_vector.size());
-			
+			// here I generate the matrices based on the mode
+			glm::mat4 view_matrix;
+			glm::mat4 projection_matrix;
 
-			//Render the curve
-			curve_gpu.bind();
-			glDrawArrays(GL_LINE_STRIP, 0, curve_editor_callback->GetCurveVertexCount());
+			if (curve_editor_callback->CurrentAppMode == EditorMode::Editor2D)
+			{
+				// use identity matrices in 2d mode (which apply no transformation)
+				view_matrix = glm::mat4(1.0f);
+				projection_matrix = glm::mat4(1.0f);
+			}
+			else
+			{
+				// In 3D mode, I use the Orbit Camera and a perspective projection
+				view_matrix = curve_editor_callback->Camera.GetViewMatrix();
+				projection_matrix = glm::perspective(glm::radians(45.0f), 800.0f / 800.0f, 0.1f, 100.0f);
+			}
+
+			// send matrices to the shader
+			glUniformMatrix4fv(view_loc, 1, GL_FALSE, &view_matrix[0][0]);
+			glUniformMatrix4fv(proj_loc, 1, GL_FALSE, &projection_matrix[0][0]);
+
+
+			// switch back to solid mode for next frame
+
+			if (curve_editor_callback->CurrentAppMode == EditorMode::Editor2D)
+			{
+				cp_point_gpu.bind();
+				glPointSize(15.f);
+				glDrawArrays(GL_POINTS, 0, cp_positions_vector.size());
+
+				cp_line_gpu.bind();
+				glDrawArrays(GL_LINE_STRIP, 0, cp_positions_vector.size());
+
+				curve_gpu.bind();
+				glDrawArrays(GL_LINE_STRIP, 0, curve_editor_callback->GetCurveVertexCount());
+			}
+			else
+			{
+				
+				if (curve_editor_callback->ShowTensor && curve_editor_callback->GetTensorVertexCount() > 0)
+				{
+					// Draw the Tensor product surface in wireframe
+					glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+					tensor_gpu.bind();
+					glDrawArrays(GL_TRIANGLES, 0, curve_editor_callback->GetTensorVertexCount());
+					glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				}
+				else if (curve_editor_callback->ShowSurface && curve_editor_callback->GetSurfaceVertexCount() > 0)
+				{
+					glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+					surface_gpu.bind();
+					glDrawArrays(GL_TRIANGLES, 0, curve_editor_callback->GetSurfaceVertexCount());
+
+					glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				}
+				else
+				{
+					cp_point_gpu.bind();
+					glPointSize(15.f);
+					glDrawArrays(GL_POINTS, 0, cp_positions_vector.size());
+					curve_gpu.bind();
+					glDrawArrays(GL_LINE_STRIP, 0, curve_editor_callback->GetCurveVertexCount());
+
+				}
+			}
 
 			//------------------------------------------
 			glDisable(GL_FRAMEBUFFER_SRGB); // disable sRGB for things like imgui
